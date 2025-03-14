@@ -150,7 +150,6 @@ fun Cluster.toClusterIdName(): ClusterVo = ClusterVo.builder {
 fun List<Cluster>.toClustersIdName(): List<ClusterVo> =
 	this@toClustersIdName.map { it.toClusterIdName() }
 
-
 // 클러스터 목록
 fun Cluster.toClusterMenu(conn: Connection): ClusterVo {
 	val cluster = this@toClusterMenu
@@ -170,6 +169,25 @@ fun Cluster.toClusterMenu(conn: Connection): ClusterVo {
 }
 fun List<Cluster>.toClustersMenu(conn: Connection): List<ClusterVo> =
 	this@toClustersMenu.map { it.toClusterMenu(conn) }
+
+// 데이터센터에서 뜰 클러스터 목록
+// fun Cluster.toDcClusterMenu(conn: Connection): ClusterVo {
+// 	val cluster = this@toDcClusterMenu
+// 	return ClusterVo.builder {
+// 		id { cluster.id() }
+// 		name { cluster.name() }
+// 		comment { cluster.comment() }
+// 		cpuArc { if(cluster.cpuPresent()) cluster.cpu().architecture() else null}
+// 		version { cluster.version().major().toString() + "." + cluster.version().minor() }
+// 		description { cluster.description() }
+// 		cpuType { if(cluster.cpuPresent()) cluster.cpu().type().toString() else null }
+// 		hostSize { cluster.findHostCntFromCluster(conn) }
+// 		vmSize { cluster.findVmCntFromCluster(conn) }
+// 	}
+// }
+// fun List<Cluster>.toClustersMenu(conn: Connection): List<ClusterVo> =
+// 	this@toClustersMenu.map { it.toClusterMenu(conn) }
+
 
 
 fun Cluster.toClusterInfo(conn: Connection): ClusterVo {

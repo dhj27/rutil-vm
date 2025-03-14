@@ -7,7 +7,6 @@ import org.ovirt.engine.sdk4.Connection
 import org.ovirt.engine.sdk4.services.*
 import org.ovirt.engine.sdk4.types.*
 
-
 fun Connection.srvDataCenters(): DataCentersService =
 	this.systemService.dataCentersService()
 
@@ -17,19 +16,6 @@ fun Connection.findAllDataCenters(searchQuery: String = "", follow: String = "")
 		if (follow.isNotEmpty()) follow(follow)
 	}.send().dataCenters()
 
-	// val query = srvDataCenters().list()
-	// if(search.isNotEmpty()) query.search(search)
-	// if(follow.isNotEmpty()) query.follow(follow)
-	// query.send().dataCenters()
-
-	// if (search.isNotEmpty() && follow.isNotEmpty())
-	// 	this.srvDataCenters().list().search(search).follow(follow).send().dataCenters()
-	// else if (search.isNotEmpty())
-	// 	this.srvDataCenters().list().search(search).send().dataCenters()
-	// else if (follow.isNotEmpty())
-	// 	this.srvDataCenters().list().follow(follow).send().dataCenters()
-	// else
-	// 	this.srvDataCenters().list().send().dataCenters()
 }.onSuccess {
 	Term.DATACENTER.logSuccess("목록조회")
 }.onFailure {
@@ -45,10 +31,6 @@ fun Connection.findDataCenter(dcId: String, follow: String = ""): Result<DataCen
 		if(follow.isNotEmpty()) follow(follow)
 	}.send().dataCenter()
 
-	// if (follow.isNotEmpty())
-	// 	this.srvDataCenter(dcId).get().follow(follow).send().dataCenter()
-	// else
-	// 	this.srvDataCenter(dcId).get().send().dataCenter()
 }.onSuccess {
 	Term.DATACENTER.logSuccess("상세조회")
 }.onFailure {
@@ -56,13 +38,8 @@ fun Connection.findDataCenter(dcId: String, follow: String = ""): Result<DataCen
 	throw if (it is Error) it.toItCloudException() else it
 }
 
-fun List<DataCenter>.nameDuplicateDataCenter(dataCenterName: String, dataCenterId: String? = null): Boolean =
-	this.filter { it.id() != dataCenterId }.any { it.name() == dataCenterName }
-
-
 fun Connection.addDataCenter(dataCenter: DataCenter): Result<DataCenter?> = runCatching {
-	if (this.findAllDataCenters()
-			.getOrDefault(listOf())
+	if (this.findAllDataCenters().getOrDefault(emptyList())
 			.nameDuplicateDataCenter(dataCenter.name())) {
 		return FailureType.DUPLICATE.toResult(Term.DATACENTER.desc)
 	}
@@ -78,8 +55,7 @@ fun Connection.addDataCenter(dataCenter: DataCenter): Result<DataCenter?> = runC
 }
 
 fun Connection.updateDataCenter(dataCenter: DataCenter): Result<DataCenter?> = runCatching {
-	if (this.findAllDataCenters()
-			.getOrDefault(listOf())
+	if (this.findAllDataCenters().getOrDefault(emptyList())
 			.nameDuplicateDataCenter(dataCenter.name(), dataCenter.id())) {
 		return FailureType.DUPLICATE.toResult(Term.DATACENTER.desc)
 	}
@@ -106,49 +82,6 @@ fun Connection.removeDataCenter(dataCenterId: String): Result<Boolean> = runCatc
 	throw if (it is Error) it.toItCloudException() else it
 }
 
-@Throws(InterruptedException::class)
-fun Connection.expectDataCenterDeleted(dataCenterId: String, timeout: Long = 60000L, interval: Long = 1000L): Boolean {
-	val startTime = System.currentTimeMillis()
-	while (true) {
-		val dataCenters: List<DataCenter> = this.findAllDataCenters().getOrDefault(listOf())
-		val dataCenterToRemove = dataCenters.firstOrNull() { it.id() == dataCenterId }
-		if (dataCenterToRemove == null) { // dataCenterToRemove 에 아무것도 없으면(삭제된상태)
-			Term.DATACENTER.logSuccess("삭제")
-			return true
-		}
-		else if (System.currentTimeMillis() - startTime > timeout) {
-			log.error("{} {} 삭제 실패 ... 시간 초과", Term.DATACENTER.desc, dataCenterToRemove.name())
-			return false
-		}
-		log.debug("{} 삭제 진행중 ... ", Term.DATACENTER.desc)
-		Thread.sleep(interval)
-	}
-}
-
-//fun Connection.findAllClustersFromDataCenter(dataCenterId: String): List<Cluster> {
-//	if(this.findDataCenter(dataCenterId).isFailure) {
-//		throw ErrorPattern.DATACENTER_ID_NOT_FOUND.toError()
-//	}
-//	return this.findAllClusters()
-//		.getOrDefault(listOf())
-//		.filter { it.dataCenterPresent() && it.dataCenter().id() == dataCenterId }
-//}
-//
-//fun Connection.findHostFromDataCenter(dataCenterId: String): List<Host> {
-//	if(this.findDataCenter(dataCenterId).isFailure) {
-//		throw ErrorPattern.DATACENTER_ID_NOT_FOUND.toError()
-//	}
-//	val clusters: List<Cluster> =
-//		this.findAllClustersFromDataCenter(dataCenterId)
-//	if (clusters.isEmpty())
-//		return listOf()
-//
-//	return this.findAllHosts()
-//		.getOrDefault(listOf())
-//		.filter { host ->
-//			clusters.any { it.id() == host.cluster().id() }
-//		}
-//}
 
 fun Connection.srvClustersFromDataCenter(dataCenterId: String): ClustersService =
 	this.srvDataCenter(dataCenterId).clustersService()
@@ -159,14 +92,6 @@ fun Connection.findAllClustersFromDataCenter(dataCenterId: String, searchQuery: 
 		if(follow.isNotEmpty()) follow(follow)
 	}.send().clusters()
 
-	// if (search.isNotEmpty() && follow.isNotEmpty())
-	// 	this.srvClustersFromDataCenter(dataCenterId).list().search(search).follow(follow).send().clusters()
-	// else if (search.isNotEmpty())
-	// 	this.srvClustersFromDataCenter(dataCenterId).list().search(search).send().clusters()
-	// else if (follow.isNotEmpty())
-	// 	this.srvClustersFromDataCenter(dataCenterId).list().follow(follow).send().clusters()
-	// else
-	// 	this.srvClustersFromDataCenter(dataCenterId).list().send().clusters()
 }.onSuccess {
 	Term.DATACENTER.logSuccessWithin(Term.CLUSTER,"목록조회", dataCenterId)
 }.onFailure {
@@ -175,9 +100,9 @@ fun Connection.findAllClustersFromDataCenter(dataCenterId: String, searchQuery: 
 }
 
 fun Connection.findAllHostsFromDataCenter(dataCenterId: String): Result<List<Host>> = runCatching {
-	this.findAllHosts()
-		.getOrDefault(listOf())
+	this.findAllHosts().getOrDefault(emptyList())
 		.filter { this.findCluster(it.cluster().id()).getOrNull()?.dataCenter()?.id() == dataCenterId }
+
 }.onSuccess {
 	Term.DATACENTER.logSuccessWithin(Term.HOST,"목록조회", dataCenterId)
 }.onFailure {
@@ -185,13 +110,10 @@ fun Connection.findAllHostsFromDataCenter(dataCenterId: String): Result<List<Hos
 	throw if (it is Error) it.toItCloudException() else it
 }
 
-
 fun Connection.findAllVmsFromDataCenter(dataCenterId: String): Result<List<Vm>> = runCatching {
-	val clusters: List<Cluster> = this.findAllClustersFromDataCenter(dataCenterId)
-		.getOrDefault(listOf())
+	val clusters: List<Cluster> = this.findAllClustersFromDataCenter(dataCenterId).getOrDefault(emptyList())
 
-	this.findAllVms()
-		.getOrDefault(listOf())
+	this.findAllVms().getOrDefault(emptyList())
 		.filter { vm -> vm.cluster().id() in clusters.map { it.id() } }
 }.onSuccess {
 	Term.DATACENTER.logSuccessWithin(Term.VM,"목록조회", dataCenterId)
@@ -215,7 +137,7 @@ fun Connection.findAllNetworksFromDataCenter(dataCenterId: String): Result<List<
 	throw if (it is Error) it.toItCloudException() else it
 }
 
-// AttachedStorageDomainsService
+
 fun Connection.srvAllAttachedStorageDomainsFromDataCenter(dataCenterId: String): AttachedStorageDomainsService =
 	this.srvDataCenter(dataCenterId).storageDomainsService()
 
@@ -309,80 +231,107 @@ fun Connection.removeAttachedStorageDomainFromDataCenter(dataCenterId: String, s
 	throw if (it is Error) it.toItCloudException() else it
 }
 
-// QOS 주석처리
-// private fun Connection.srvQossFromDataCenter(dataCenterId: String): QossService =
-// 	this.srvDataCenter(dataCenterId).qossService()
-//
-// fun Connection.findAllQossFromDataCenter(dataCenterId: String): Result<List<Qos>> = runCatching {
-// 	this.srvQossFromDataCenter(dataCenterId).list().send().qoss()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.QOS,"목록조회", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.QOS,"목록조회", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
-//
-// private fun Connection.srvQuotasFromDataCenter(dataCenterId: String): QuotasService =
-// 	this.srvDataCenter(dataCenterId).quotasService()
-//
-// fun Connection.findAllQuotasFromDataCenter(dataCenterId: String): Result<List<Quota>> = runCatching {
-// 	this.srvQuotasFromDataCenter(dataCenterId).list().send().quotas()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.QUOTA, "목록조회", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.QUOTA, "목록조회", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
-//
-// fun Connection.addQuotaFromDataCenter(dataCenterId: String, quota: Quota): Result<Quota?> = runCatching {
-// 	this.srvQuotasFromDataCenter(dataCenterId).add().quota(quota).send().quota()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.QUOTA,"생성", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.QUOTA,"생성", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
-//
-// private fun Connection.srvQuotaFromDataCenter(dataCenterId: String, quotaId: String): QuotaService =
-// 	this.srvQuotasFromDataCenter(dataCenterId).quotaService(quotaId)
-//
-// fun Connection.findQuotaFromDataCenter(dataCenterId: String, quotaId: String): Result<Quota?> = runCatching {
-// 	this.srvQuotaFromDataCenter(dataCenterId, quotaId).get().send().quota()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.QUOTA, "상세조회", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.QUOTA, "상세조회", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
-//
-// private fun Connection.srvQuotaClusterLimitsFromDataCenter(dataCenterId: String, quotaId: String): QuotaClusterLimitsService =
-// 	this.srvQuotaFromDataCenter(dataCenterId, quotaId).quotaClusterLimitsService()
-//
-// fun Connection.findAllQuotaClusterLimitsFromDataCenter(dataCenterId: String, quotaId: String): Result<List<QuotaClusterLimit>> = runCatching {
-// 	this.srvQuotaClusterLimitsFromDataCenter(dataCenterId, quotaId).list().send().limits()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.CLUSTER_QUOTA_LIMIT, "목록조회", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.CLUSTER_QUOTA_LIMIT, "목록조회", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
-//
-// private fun Connection.srvQuotaStorageLimitsFromDataCenter(dataCenterId: String, quotaId: String): QuotaStorageLimitsService =
-// 	this.srvQuotaFromDataCenter(dataCenterId, quotaId).quotaStorageLimitsService()
-//
-// fun Connection.findAllQuotaStorageLimitsFromDataCenter(dataCenterId: String, quotaId: String): List<QuotaStorageLimit> =
-// 	this.srvQuotaStorageLimitsFromDataCenter(dataCenterId, quotaId).list().send().limits()
 
-// private fun Connection.srvPermissionsFromDataCenter(dataCenterId: String): AssignedPermissionsService =
-// 	this.srvDataCenter(dataCenterId).permissionsService()
-//
-// fun Connection.findAllPermissionsFromDataCenter(dataCenterId: String): Result<List<Permission>> = runCatching {
-// 	checkDataCenter(dataCenterId)
-//
-// 	this.srvPermissionsFromDataCenter(dataCenterId).list().send().permissions() ?: listOf()
-// }.onSuccess {
-// 	Term.DATACENTER.logSuccessWithin(Term.PERMISSION, "목록조회", dataCenterId)
-// }.onFailure {
-// 	Term.DATACENTER.logFailWithin(Term.PERMISSION, "목록조회", it, dataCenterId)
-// 	throw if (it is Error) it.toItCloudException() else it
-// }
+// region: 유틸
+fun List<DataCenter>.nameDuplicateDataCenter(dataCenterName: String, dataCenterId: String? = null): Boolean =
+	this.filter { it.id() != dataCenterId }.any { it.name() == dataCenterName }
+
+@Throws(InterruptedException::class)
+fun Connection.expectDataCenterDeleted(dataCenterId: String, timeout: Long = 60000L, interval: Long = 1000L): Boolean {
+	val startTime = System.currentTimeMillis()
+	while (true) {
+		val dataCenters: List<DataCenter> = this.findAllDataCenters().getOrDefault(emptyList())
+		val dataCenterToRemove = dataCenters.firstOrNull() { it.id() == dataCenterId }
+		if (dataCenterToRemove == null) { // dataCenterToRemove 에 아무것도 없으면(삭제된상태)
+			Term.DATACENTER.logSuccess("삭제")
+			return true
+		}
+		else if (System.currentTimeMillis() - startTime > timeout) {
+			log.error("{} {} 삭제 실패 ... 시간 초과", Term.DATACENTER.desc, dataCenterToRemove.name())
+			return false
+		}
+		log.debug("{} 삭제 진행중 ... ", Term.DATACENTER.desc)
+		Thread.sleep(interval)
+	}
+}
+// endregion
+
+
+
+// QOS 주석처리
+/*private fun Connection.srvQossFromDataCenter(dataCenterId: String): QossService =
+	this.srvDataCenter(dataCenterId).qossService()
+
+fun Connection.findAllQossFromDataCenter(dataCenterId: String): Result<List<Qos>> = runCatching {
+	this.srvQossFromDataCenter(dataCenterId).list().send().qoss()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.QOS,"목록조회", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.QOS,"목록조회", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
+
+/*private fun Connection.srvQuotasFromDataCenter(dataCenterId: String): QuotasService =
+	this.srvDataCenter(dataCenterId).quotasService()*/
+
+/*fun Connection.findAllQuotasFromDataCenter(dataCenterId: String): Result<List<Quota>> = runCatching {
+	this.srvQuotasFromDataCenter(dataCenterId).list().send().quotas()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.QUOTA, "목록조회", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.QUOTA, "목록조회", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
+
+/*fun Connection.addQuotaFromDataCenter(dataCenterId: String, quota: Quota): Result<Quota?> = runCatching {
+	this.srvQuotasFromDataCenter(dataCenterId).add().quota(quota).send().quota()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.QUOTA,"생성", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.QUOTA,"생성", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
+
+/*private fun Connection.srvQuotaFromDataCenter(dataCenterId: String, quotaId: String): QuotaService =
+	this.srvQuotasFromDataCenter(dataCenterId).quotaService(quotaId)*/
+
+/*fun Connection.findQuotaFromDataCenter(dataCenterId: String, quotaId: String): Result<Quota?> = runCatching {
+	this.srvQuotaFromDataCenter(dataCenterId, quotaId).get().send().quota()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.QUOTA, "상세조회", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.QUOTA, "상세조회", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
+
+/*private fun Connection.srvQuotaClusterLimitsFromDataCenter(dataCenterId: String, quotaId: String): QuotaClusterLimitsService =
+	this.srvQuotaFromDataCenter(dataCenterId, quotaId).quotaClusterLimitsService()*/
+
+/*fun Connection.findAllQuotaClusterLimitsFromDataCenter(dataCenterId: String, quotaId: String): Result<List<QuotaClusterLimit>> = runCatching {
+	this.srvQuotaClusterLimitsFromDataCenter(dataCenterId, quotaId).list().send().limits()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.CLUSTER_QUOTA_LIMIT, "목록조회", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.CLUSTER_QUOTA_LIMIT, "목록조회", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
+
+/*private fun Connection.srvQuotaStorageLimitsFromDataCenter(dataCenterId: String, quotaId: String): QuotaStorageLimitsService =
+	this.srvQuotaFromDataCenter(dataCenterId, quotaId).quotaStorageLimitsService()*/
+
+/*fun Connection.findAllQuotaStorageLimitsFromDataCenter(dataCenterId: String, quotaId: String): List<QuotaStorageLimit> =
+	this.srvQuotaStorageLimitsFromDataCenter(dataCenterId, quotaId).list().send().limits()*/
+
+/*private fun Connection.srvPermissionsFromDataCenter(dataCenterId: String): AssignedPermissionsService =
+	this.srvDataCenter(dataCenterId).permissionsService()*/
+
+/*fun Connection.findAllPermissionsFromDataCenter(dataCenterId: String): Result<List<Permission>> = runCatching {
+	checkDataCenter(dataCenterId)
+
+	this.srvPermissionsFromDataCenter(dataCenterId).list().send().permissions() ?: emptyList()
+}.onSuccess {
+	Term.DATACENTER.logSuccessWithin(Term.PERMISSION, "목록조회", dataCenterId)
+}.onFailure {
+	Term.DATACENTER.logFailWithin(Term.PERMISSION, "목록조회", it, dataCenterId)
+	throw if (it is Error) it.toItCloudException() else it
+}*/
