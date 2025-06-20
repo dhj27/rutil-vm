@@ -134,24 +134,30 @@ data class UnregisteredOvfOfEntities(
 		private val log by LoggerDelegate()
 		val xmlMapper: ObjectMapper = XmlMapper.builder()
 			.defaultUseWrapper(false)
-			// .addModule(kotlinModule())
+			.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES) // 여기에 설정
 			.build()
-			.registerModules(kotlinModule({
-				configure(KotlinFeature.NullIsSameAsDefault, true)
-				configure(KotlinFeature.NullToEmptyCollection, true)
-			}), SimpleModule().apply {
-				addDeserializer(OvfVirtualHardwareSection::class.java, OvfVirtualHardwareSectionDeserializer())
-				// addDeserializer(RasdItem::class.java, RasdItemDeserializer())
-			})
+			.registerModules(
+				kotlinModule {
+					configure(KotlinFeature.NullIsSameAsDefault, true)
+					configure(KotlinFeature.NullToEmptyCollection, true)
+				},
+				SimpleModule().apply {
+					addDeserializer(OvfVirtualHardwareSection::class.java, OvfVirtualHardwareSectionDeserializer())
+					// addDeserializer(RasdItem::class.java, RasdItemDeserializer())
+				}
+			)
 			.enable(
 				DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT,
-				// DeserializationFeature.FAIL_ON_TRAILING_TOKENS,
-					DeserializationFeature.USE_JAVA_ARRAY_FOR_JSON_ARRAY,
-						DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-			.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-				DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES)
+				DeserializationFeature.USE_JAVA_ARRAY_FOR_JSON_ARRAY,
+				DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY
+			)
+			.disable(
+				DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+				DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES
+			)
 
-			// .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+
+		// .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
 		inline fun builder(block: Builder.() -> Unit): UnregisteredOvfOfEntities = Builder().apply(block).build()
 	}
 }

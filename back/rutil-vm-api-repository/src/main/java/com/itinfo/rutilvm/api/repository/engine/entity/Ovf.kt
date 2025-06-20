@@ -5,10 +5,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonTypeName
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
@@ -174,11 +176,10 @@ data class OvfUser(
 @JsonIgnoreProperties(ignoreUnknown = true)
 class RasdItem (
 	@field:JacksonXmlProperty(localName="Caption")
-	var caption: String? = "" // Caption for the device
+	var caption: String? = "", // Caption for the device
 
-	/*
-	@field:JacksonXmlProperty(localName="InstanceID", namespace=NS_RASD)
-	val instanceID: String? = "", // Unique ID for this item within the VM
+	@field:JacksonXmlProperty(localName="InstanceId", namespace=NS_RASD)
+	val instanceId: String? = "", // Unique ID for this item within the VM
 
 	@field:JacksonXmlProperty(localName="Description", namespace=NS_RASD)
 	val description: String? = "", // Description of the resource
@@ -272,7 +273,7 @@ class RasdItem (
 	@field:JacksonXmlProperty(localName="Alias")
 	val alias: String? = "",
 	@field:JacksonXmlProperty(localName="SpecParams")
-	val specParams: RasdSpecParams? = null*/
+	val specParams: RasdSpecParams? = null
 	//endregion
 	// Add other RASD properties as needed
 ): Serializable {
@@ -283,35 +284,18 @@ class OvfVirtualHardwareSectionDeserializer: StdDeserializer<OvfVirtualHardwareS
 		p: JsonParser?,
 		ctxt: DeserializationContext?
 	): OvfVirtualHardwareSection? {
-		val objectMapper = ObjectMapper().registerKotlinModule()
-		val node = p?.readValueAsTree<JsonNode>()
-		val node2 = (ctxt?.parser as? FromXmlParser)?.codec?.readTree<JsonNode>(p)
+		val codec = p?.codec as ObjectMapper
+		val node = p.readValueAsTree<JsonNode>()
 
-		val infoNode: JsonNode? = node?.findValue("Info")
-		val infoNode2: JsonNode? = node2?.findValue("Info")
-		val systemNode: JsonNode? = node?.findValue("System")
-		val systemNode2: JsonNode? = node2?.findValue("System")
-		val virtualSystemTypeNode: JsonNode? = systemNode?.findValue("VirtualSystemType")
-		val virtualSystemTypeNode2: JsonNode? = systemNode2?.findValue("VirtualSystemType")
-		val itemsNode: JsonNode? = node?.findValue("Item")
-		val itemsNode2: JsonNode? = node2?.findValue("Item")
+		val infoNode = node.findValue("Info")
+		val systemNode = node.findValue("System")
+		val virtualSystemTypeNode = systemNode?.findValue("VirtualSystemType")
 
-		val iterator: Iterator<String>? = node?.fieldNames()
-		while (iterator?.hasNext() == true) {
-			val fieldName: String = iterator.next()
-			val fieldValue: String = node.get(fieldName).asText()
-			log.debug("name is [{}], text is [{}]", fieldName, fieldValue);
-		}
+		val itemNodes = node.findValues("Item")
+		val items = itemNodes.map { codec.treeToValue(it, RasdItem::class.java) }
 
-		log.debug("[1] info: {}, system: {}, system.virtualSystemType: {}, itemsNode: {}", infoNode?.asText(), systemNode?.asText(), virtualSystemTypeNode?.asText(), itemsNode?.size())
-		log.debug("[2] info: {}, system: {}, system.virtualSystemType: {}, itemsNode: {}", infoNode2?.asText(), systemNode2?.asText(), virtualSystemTypeNode2?.asText(), itemsNode2?.size())
-
-		// log.debug("items.size: {} itemsNode: {}", items.size)
-		// val items: String? = node?.has("Item")
-		// log.debug("items: {}", items)
-		val hasItems: Boolean = node?.has("Item") == true
-		/*val items: List<RasdItem> = Arrays.stream(objectMapper.treeToValue(itemsNode, Array<RasdItem>::class.java)).toList()
-		log.debug("hasItems: {}, items: {}", hasItems, items)*/
+		println("itemNodes " + itemNodes.size)
+		println("items " + items.size)
 
 		return OvfVirtualHardwareSection.builder {
 			info { infoNode?.asText() }
@@ -321,8 +305,9 @@ class OvfVirtualHardwareSectionDeserializer: StdDeserializer<OvfVirtualHardwareS
 				}
 			}
 			items {
-				listOf()
+				items
 			}
+
 		}
 	}
 }
@@ -431,6 +416,8 @@ data class OvfOperatingSystemSection(
 	val description: String? = ""
 ): OvfSectionBase, Serializable
 
+@JsonDeserialize(using = OvfVirtualHardwareSectionDeserializer::class)
+@JsonTypeName("ovf:VirtualHardwareSection_Type")
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class OvfVirtualHardwareSection(
 	@field:JacksonXmlProperty(isAttribute=true, localName="type", namespace=NS_XSI)
@@ -442,9 +429,10 @@ data class OvfVirtualHardwareSection(
 	@field:JacksonXmlProperty(localName="System", namespace=NS_OVF) // System is child of Section
 	val system: OvfSystem? = null,
 
-	// @field:JacksonXmlElementWrapper(useWrapping=false)
-	/*@field:JacksonXmlProperty(localName="Item")
-	val items: List<RasdItem>? = listOf()*/
+	// @field:JacksonXmlElementWrapper(useWrapping = false)
+	@field:JacksonXmlProperty(localName = "Item", namespace=NS_RASD)  // ✅ namespace 제거
+	val items: List<RasdItem>? = listOf()
+
 	// Add other VirtualHardwareSection properties
 ): OvfSectionBase, Serializable {
 	override fun toString(): String =
@@ -455,7 +443,8 @@ data class OvfVirtualHardwareSection(
 		private var bInfo: String? = "";fun info(block: () -> String?) { bInfo = block() ?: "" }
 		private var bSystem: OvfSystem? = null;fun system(block: () -> OvfSystem?) { bSystem = block() }
 		private var bItems: List<RasdItem>? = listOf();fun items(block: () -> List<RasdItem>?) { bItems = block() ?: listOf() }
-		fun build(): OvfVirtualHardwareSection = OvfVirtualHardwareSection(bXsiType, bInfo, bSystem, /*bItems*/)
+		fun build(): OvfVirtualHardwareSection = OvfVirtualHardwareSection(bXsiType, bInfo, bSystem, bItems)
+
 	}
 
 	companion object {
@@ -585,6 +574,7 @@ interface OvfSectionBase : Serializable {
 	@field:JacksonXmlProperty(isAttribute=true, localName="required", namespace=NS_OVF)
 	open val ovfRequired: Boolean? = null,
 	*/
+	@get:JacksonXmlProperty(isAttribute = true, localName = "type", namespace = NS_XSI)
 	val xsiType: String?
 }
 

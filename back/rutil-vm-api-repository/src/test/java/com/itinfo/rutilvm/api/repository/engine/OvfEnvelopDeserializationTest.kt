@@ -71,15 +71,23 @@ class OvfEnvelopDeserializationTest {
 			assertNotNull(hardwareSection?.system)
 			assertEquals("ENGINE 4.4.0.0", hardwareSection?.system?.virtualSystemType)
 
-			/*
-			assertNotNull(hardwareSection?.items, "Hardware items list should not be null")
-			assertFalse(hardwareSection?.items.isNullOrEmpty(), "Hardware items list should not be empty")
+			println("items: ${hardwareSection?.items?.size}")
+			hardwareSection?.items?.forEach {
+				println("item caption: ${it.caption}")
+				println("item itemType: ${it.itemType}")
+				println("item InstanceId: ${it.instanceId}")
+				println("item description: ${it.description}")
+				println("item resourceType: ${it.resourceType}")
 
-			val firstItem = hardwareSection?.items?.firstOrNull()
-			assertNotNull(firstItem, "First hardware item should exist")
-			assertEquals("8 virtual cpu", firstItem?.caption, "First item (CPU) caption mismatch")
-			assertEquals(3, firstItem?.resourceType, "First item (CPU) resource type mismatch")
-			*/
+			}
+
+			// assertNotNull(hardwareSection?.items, "Hardware items list should not be null")
+			// assertFalse(hardwareSection?.items.isNullOrEmpty(), "Hardware items list should not be empty")
+			//
+			// val firstItem = hardwareSection?.items?.firstOrNull()
+			// assertNotNull(firstItem, "First hardware item should exist")
+			// assertEquals("8 virtual cpu", firstItem?.caption, "First item (CPU) caption mismatch")
+			// assertEquals(3, firstItem?.resourceType, "First item (CPU) resource type mismatch")
 
 			/*
 			val snapshotsSection = content.snapshotsSection
